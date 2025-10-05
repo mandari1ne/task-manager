@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Log In</title>
+    <style>
+        body {
+            font-family: 'Helvetica', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #87CEEB, #B0E0E6);
+        }
+
+        #loginForm {
+            background-color: #fff;
+            padding-top: 30px;
+            padding-left: 30px;
+            padding-right: 30px;
+            padding-bottom: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            width: 300px;
+            text-align: center;
+        }
+
+        #loginForm h2 {
+            margin-bottom: 25px;
+            color: #1E90FF;
+            font-size: 1.5rem;
+        }
+
+        #loginForm input {
+            display: block;
+            width: 94%;
+            padding: 10px 12px;
+            margin-bottom: 15px;
+            font-size: 1rem;
+            border: 1px solid #b0c4de;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        #loginForm input:focus {
+            outline: none;
+            border-color: #1E90FF;
+            box-shadow: 0 0 8px rgba(30,144,255,0.4);
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #1E90FF;
+            font-size: 0.9rem;
+        }
+
+        #loginForm button {
+            width: 40%;
+            padding: 12px;
+            background-color: #1E90FF;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        #loginForm button:hover {
+            background-color: #23839D;
+        }
+
+        .text-red-500 {
+            color: #ff4d4f;
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .mb-4 {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+    <form id="loginForm" method="post" action="{% url 'login' %}">
+        {% csrf_token %}
+
+         {% if next %}
+            <input type="hidden" name="next" value="{{ next }}">
+        {% endif %}
+
+        <h2>Log In</h2>
+
+        {% if form.non_field_errors %}
+            <div class="mb-4">
+                {% for error in form.non_field_errors %}
+                    <div class="text-red-500">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if messages %}
+            <div class="mb-4">
+                {% for message in messages %}
+                    <div class="text-red-500">{{ message }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <div>
+            <label for="{{ form.username.id_for_label }}">Username</label>
+            {{ form.username }}
+        </div>
+
+        <div>
+            <label for="{{ form.password.id_for_label }}">Password</label>
+            {{ form.password }}
+        </div>
+
+        <button type="submit">Log In</button>
+    </form>
+
+</body>
+</html>

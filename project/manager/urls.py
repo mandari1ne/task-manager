@@ -1,5 +1,6 @@
 from django.urls import path
 from . import api, views
+from django.contrib.auth import views as auth_views
 
 urlpatterns = [
     path('api_holiday/', api.HolidayApiView.as_view(), name='api_holiday'),
@@ -7,4 +8,6 @@ urlpatterns = [
     path('api_post_task/', api.post_task, name='post_task'),
     path('', views.IndexView.as_view()),
     path('tasks/', views.get_tasks, name='tasks'),
+    path('login/', auth_views.LoginView.as_view(template_name='login.html'), name='login'),
+    path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 ]

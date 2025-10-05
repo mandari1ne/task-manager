@@ -1,6 +1,7 @@
 from django.contrib import admin
 from .models import CustomUser, Department, Holiday, Status, Tag, Task, Notification, UserSchedule, Vacation
 from django.contrib.auth import get_user_model
+from django.contrib.auth.admin import UserAdmin
 
 User = get_user_model()
 
@@ -11,7 +12,7 @@ class CustomUserInline(admin.StackedInline):
 admin.site.unregister(User)
 
 @admin.register(User)
-class UserAdmin(admin.ModelAdmin):
+class UserAdmin(UserAdmin):
     inlines = [CustomUserInline]
 
     list_filter = ('profile__department',)

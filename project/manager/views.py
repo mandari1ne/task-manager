@@ -1,24 +1,27 @@
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.shortcuts import render
+from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from . import models
 import json, os
 
-
+@method_decorator(login_required(login_url='/login'), name='dispatch')
 class IndexView(TemplateView):
     template_name = 'index.html'
 
 def get_tasks(request):
     # request.user.profile - ЗАМЕНИТЬ НАДО БУДЕТ
-    test_user = models.CustomUser.objects.get(django_user__username='user')
-    test_user_id = test_user.id
+    # test_user = models.CustomUser.objects.get(django_user__username='user')
+    current_user = request.user.profile
+    current_user_id = current_user.id
 
     tasks_dir = settings.STATIC_ROOT
 
     # создем, если не существует
     os.makedirs(tasks_dir, exist_ok=True)
-    tasks_file = os.path.join(tasks_dir, f'tasks_user_{test_user_id}.json')
+    tasks_file = os.path.join(tasks_dir, f'tasks_user_{current_user_id}.json')
 
     start = request.GET.get("start")
     end = request.GET.get("end")
@@ -31,7 +34,7 @@ def get_tasks(request):
         except json.JSONDecodeError:
             data = {}
 
-        last_task_update = models.Task.objects.filter(managed_by=test_user).order_by('-updated_at').first()
+        last_task_update = models.Task.objects.filter(managed_by=current_user).order_by('-updated_at').first()
         if last_task_update:
             if data.get('last_updated') == last_task_update.updated_at.isoformat():
                 use_cache = True
@@ -41,7 +44,7 @@ def get_tasks(request):
         events = data['tasks']
     else:
         tasks = models.Task.objects.filter(
-            managed_by=test_user,
+            managed_by=current_user,
             deadline__range=[start, end],
         ).values('title', 'deadline', 'status__name', 'updated_at')
 
