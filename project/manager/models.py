@@ -36,6 +36,9 @@ class CustomUser(models.Model):
             if self.telegram_username and not self.telegram_username.startswith('@'):
                 self.telegram_username = '@' + self.telegram_username
 
+    def __str__(self):
+        return self.django_user.get_full_name()
+
 
 class Department(models.Model):
     name = models.CharField(max_length=255)
@@ -90,6 +93,8 @@ class Task(models.Model):
                                on_delete=models.CASCADE,
                                related_name='tasks',
                                null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'{self.title} - {self.status} - {self.deadline}'

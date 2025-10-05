@@ -1,0 +1,244 @@
+<div class="calendar">
+  <header class="calendar__header">
+    <button class="calendar__btn calendar__btn--prev">‹</button>
+    <div class="calendar__month-year">
+      <span class="calendar__month"></span>
+      <span class="calendar__year"></span>
+    </div>
+    <button class="calendar__btn calendar__btn--next">›</button>
+  </header>
+
+  <div class="calendar__grid">
+    <div class="calendar__day-names">
+      <span class="calendar__day-name">Sun</span>
+      <span class="calendar__day-name">Mon</span>
+      <span class="calendar__day-name">Tue</span>
+      <span class="calendar__day-name">Wed</span>
+      <span class="calendar__day-name">Thu</span>
+      <span class="calendar__day-name">Fri</span>
+      <span class="calendar__day-name">Sat</span>
+    </div>
+    <div class="calendar__day-numbers"></div>
+  </div>
+</div>
+
+<style>
+  .calendar {
+    background-color: #FFF;
+    border-radius: 0.8rem;
+    box-shadow: 0 0.8rem 1.6rem rgba(35, 131, 157, 0.2);
+    padding: 1.2rem;
+    font-family: Helvetica, sans-serif;
+    font-size: 0.9rem;
+    display: grid;
+    place-content: center;
+    width: 200px;
+    height: 230px;
+    box-sizing: border-box;
+    border: 2px solid #1E90FF;
+    margin: 10px;
+  }
+
+  .calendar__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: bold;
+    letter-spacing: 0.05rem;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .calendar__month-year {
+    display: flex;
+    gap: 0.2rem;
+  }
+
+  .calendar__btn {
+    background: none;
+    border: none;
+    color: #1E90FF;
+    font-size: 1.0rem;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+
+  .calendar__btn:hover {
+    color: #23839D;
+    transform: scale(1.1);
+  }
+
+  .calendar__day-names {
+    border-bottom: 0.1rem solid #828889;
+    display: flex;
+    gap: 0.35rem;
+    margin-bottom: 0.3rem;
+    padding: 0.2rem 0;
+  }
+
+  .calendar__day-name {
+    aspect-ratio: 1;
+    color: #828889;
+    font-weight: normal;
+    text-align: center;
+    width: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+  }
+
+  .calendar__day-numbers {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .calendar__day-numbers-row {
+    display: flex;
+    gap: 0.3rem;
+    padding: 0.2rem 0;
+  }
+
+  .calendar__day-numbers-row:first-child {
+    justify-content: flex-end;
+  }
+
+  .calendar__day-number {
+    aspect-ratio: 1;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3rem;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .calendar__day-number--current {
+    background-color: #23839D;
+    border: 2px solid #23839D;
+    border-radius: 50%;
+    color: #FFF;
+    font-weight: bold;
+  }
+
+  .calendar__day-number--today-outline {
+  border: 2px solid #23839D;
+  border-radius: 50%;
+  color: #23839D;
+  background-color: transparent;
+  font-weight: bold;
+}
+</style>
+
+<script>
+  const months = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+  ];
+
+  let currentDate = new Date();
+  const today = new Date();
+
+  const monthElement = document.querySelector('.calendar__month');
+  const yearElement = document.querySelector('.calendar__year');
+  const daysContainer = document.querySelector('.calendar__day-numbers');
+
+  // функция для добавления ведущего нуля
+  const pad = n => String(n).padStart(2, '0');
+
+  function renderCalendar() {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    monthElement.textContent = months[month];
+    yearElement.textContent = year;
+
+    daysContainer.innerHTML = '';
+
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+    let week = document.createElement('div');
+    week.classList.add('calendar__day-numbers-row');
+
+    // Пустые ячейки перед первым днём месяца
+    for (let i = 0; i < firstDayOfMonth; i++) {
+      const empty = document.createElement('span');
+      empty.classList.add('calendar__day-number');
+      empty.textContent = '';
+      week.append(empty);
+    }
+
+    // Дни месяца
+    for (let i = 1; i <= daysInMonth; i++) {
+      const day = document.createElement('span');
+      day.classList.add('calendar__day-number');
+      day.textContent = i;
+
+      const d = new Date(year, month, i);
+      const fullDate = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      day.dataset.date = fullDate;
+
+      // подсветка сегодняшнего дня
+      if (
+        i === today.getDate() &&
+        month === today.getMonth() &&
+        year === today.getFullYear()
+      ) {
+        day.classList.add('calendar__day-number--current');
+      }
+
+      // клик по дате
+      day.addEventListener('click', () => {
+        const allDays = document.querySelectorAll('.calendar__day-number');
+
+        allDays.forEach(dElem => {
+          const dDate = dElem.dataset.date;
+
+          if (dDate === fullDate) {
+            // если выбран сегодня — ставим заливку
+            dElem.classList.add('calendar__day-number--current');
+            dElem.classList.remove('calendar__day-number--today-outline');
+          } else if (
+            dDate === `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`
+          ) {
+            // если это сегодня, но не выбран — контур
+            dElem.classList.remove('calendar__day-number--current');
+            dElem.classList.add('calendar__day-number--today-outline');
+          } else {
+            // все остальные дни
+            dElem.classList.remove('calendar__day-number--current', 'calendar__day-number--today-outline');
+          }
+        });
+
+        // отправляем событие наверх
+        window.dispatchEvent(new CustomEvent('calendarDaySelected', {
+          detail: { date: fullDate }
+        }));
+      });
+
+      week.append(day);
+
+      // если суббота — закрываем неделю
+      if (new Date(year, month, i).getDay() === 6 || i === daysInMonth) {
+        daysContainer.append(week);
+        week = document.createElement('div');
+        week.classList.add('calendar__day-numbers-row');
+      }
+    }
+  }
+
+  document.querySelector('.calendar__btn--prev')?.addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  });
+
+  document.querySelector('.calendar__btn--next')?.addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  renderCalendar();
+</script>

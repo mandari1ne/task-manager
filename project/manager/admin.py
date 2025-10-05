@@ -43,6 +43,7 @@ class TasksAdmin(admin.ModelAdmin):
     search_fields = ('head_task__title', 'title')
     list_filter = ('status', 'priority')
     list_display = ('title', 'status', 'priority', 'deadline', 'assigned_by', 'managed_by')
+    readonly_fields = ('created_at', 'updated_at')
 
 @admin.register(Notification)
 class NotificationsAdmin(admin.ModelAdmin):
