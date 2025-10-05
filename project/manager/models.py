@@ -23,7 +23,7 @@ class CustomUser(models.Model):
                                    on_delete=models.CASCADE,
                                    related_name='employees')
     job_title = models.CharField(max_length=255)
-    user_img = models.ImageField(upload_to='users/')
+    user_img = models.ImageField(upload_to='users/', blank=True, null=True)
     telegram_username = models.CharField(max_length=100)
 
     def clean(self):
@@ -38,7 +38,6 @@ class CustomUser(models.Model):
 
     def __str__(self):
         return self.django_user.get_full_name()
-
 
 class Department(models.Model):
     name = models.CharField(max_length=255)
