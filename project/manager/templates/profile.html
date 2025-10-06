@@ -323,16 +323,12 @@
 
                             <div class="horizontal-field">
                                 <label class="form-label">From</label>
-                                <input class="display-field">
-
-                                </input>
+                                <input id="personal-from" class="display-field">
                             </div>
 
                             <div class="horizontal-field">
                                 <label class="form-label">To</label>
-                                <input class="display-field">
-
-                                </input>
+                                 <input id="personal-to" class="display-field">
                             </div>
                         </div>
 
@@ -355,81 +351,109 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-    async function openPasswordModal() {
-        try {
-            const response = await fetch("{% url 'change_password' %}");
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const html = await response.text();
 
-            const container = document.getElementById('password-modal-container');
-            container.innerHTML = html;
+    </script>
 
-            const passwordModalElement = document.getElementById('passwordModal');
-            if (passwordModalElement) {
-                const passwordModal = new bootstrap.Modal(passwordModalElement);
-                passwordModal.show();
+    <script>
 
-                passwordModalElement.addEventListener('hidden.bs.modal', function (event) {
-                    container.innerHTML = '';
-                }, { once: true });
-
-            } else {
-                console.error("Элемент 'passwordModal' не найден после загрузки HTML.");
-            }
-
-        } catch (err) {
-            console.error("Ошибка загрузки или инициализации модалки:", err);
-        }
-    }
-
-    async function submitPasswordForm(event) {
-        event.preventDefault();
-        const form = event.target;
-        const formData = new FormData(form);
-
-        try {
-            const response = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': formData.get('csrfmiddlewaretoken')
-                },
-            });
-
-            const data = await response.json();
-            const msgBox = document.getElementById('password-message');
-
-            if (data.success) {
-                msgBox.className = "alert alert-success";
-                msgBox.textContent = data.message;
-                msgBox.style.display = 'block';
-
-                setTimeout(() => {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
-                    if (modal) {
-                        modal.hide();
+        document.addEventListener('DOMContentLoaded', function () {
+            fetch('/personal_time/')
+                .then(response => {
+                    if (!response.ok) throw new Error('Network error');
+                    return response.json();
+                })
+                .then(data => {
+                    // Проверим, что данные есть
+                    if (data.personal_hours_start && data.personal_hours_end) {
+                        document.getElementById('personal-from').value = data.personal_hours_start;
+                        document.getElementById('personal-to').value = data.personal_hours_end;
+                    } else {
+                        document.getElementById('personal-from').value = '—';
+                        document.getElementById('personal-to').value = '—';
                     }
-                }, 1300);
-            } else {
-                msgBox.className = "alert alert-danger";
-                msgBox.textContent = data.message || "Error int he form. Please, check data.";
-                msgBox.style.display = 'block';
+                })
+                .catch(err => {
+                    console.error('Ошибка при загрузке личного времени:', err);
+                    document.getElementById('personal-from').value = 'Ошибка';
+                    document.getElementById('personal-to').value = 'Ошибка';
+                });
+        });
 
-                if (data.errors) {
-                    console.log('Ошибки формы:', data.errors);
+        async function openPasswordModal() {
+            try {
+                const response = await fetch("{% url 'change_password' %}");
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                const html = await response.text();
+
+                const container = document.getElementById('password-modal-container');
+                container.innerHTML = html;
+
+                const passwordModalElement = document.getElementById('passwordModal');
+                if (passwordModalElement) {
+                    const passwordModal = new bootstrap.Modal(passwordModalElement);
+                    passwordModal.show();
+
+                    passwordModalElement.addEventListener('hidden.bs.modal', function (event) {
+                        container.innerHTML = '';
+                    }, { once: true });
+
+                } else {
+                    console.error("Элемент 'passwordModal' не найден после загрузки HTML.");
+                }
+
+            } catch (err) {
+                console.error("Ошибка загрузки или инициализации модалки:", err);
             }
-        } catch (error) {
-            console.error('Ошибка при отправке формы:', error);
-            const msgBox = document.getElementById('password-message');
-            msgBox.className = "alert alert-danger";
-            msgBox.textContent = "An error occurred when submitting the form";
-            msgBox.style.display = 'block';
         }
-    }
+
+        async function submitPasswordForm(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken')
+                    },
+                });
+
+                const data = await response.json();
+                const msgBox = document.getElementById('password-message');
+
+                if (data.success) {
+                    msgBox.className = "alert alert-success";
+                    msgBox.textContent = data.message;
+                    msgBox.style.display = 'block';
+
+                    setTimeout(() => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('passwordModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                    }, 1300);
+                } else {
+                    msgBox.className = "alert alert-danger";
+                    msgBox.textContent = data.message || "Error int he form. Please, check data.";
+                    msgBox.style.display = 'block';
+
+                    if (data.errors) {
+                        console.log('Ошибки формы:', data.errors);
+                    }
+                }
+            } catch (error) {
+                console.error('Ошибка при отправке формы:', error);
+                const msgBox = document.getElementById('password-message');
+                msgBox.className = "alert alert-danger";
+                msgBox.textContent = "An error occurred when submitting the form";
+                msgBox.style.display = 'block';
+            }
+        }
     </script>
 </body>
 </html>

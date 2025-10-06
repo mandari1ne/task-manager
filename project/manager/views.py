@@ -127,3 +127,17 @@ def change_password(request):
         form = PasswordChangeForm(request.user)
 
     return render(request, 'change_password_modal.html', {'form': form})
+
+def get_personal_time(request):
+    current_user = request.user.profile
+
+    try:
+        user_schedule = models.UserSchedule.objects.get(user=current_user)
+        hours = {
+            'personal_hours_start': user_schedule.personal_hours_start,
+            'personal_hours_end': user_schedule.personal_hours_end,
+        }
+    except models.UserSchedule.DoesNotExist:
+        hours = {}
+
+    return JsonResponse(hours)
