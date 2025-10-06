@@ -148,12 +148,17 @@
                 </a>
                 <button class="but-search">Schedule search</button>
                 <button class="but-create">Create task</button>
-                <button class="but-add">Add vacation/weekend</button>
+                <a href="/add_vacation/" style="text-decoration: none;">
+                    <button class="but-add" style="width: 100%;">
+                        Add vacation/weekend
+                    </button>
+                </a>
+<!--                <button class="but-add">Add vacation/weekend</button>-->
 
                 {% if user.is_superuser %}
                     <a href="/admin/" style="text-decoration: none;">
                         <button class="but-admin" style="width: 100%;">
-                            Управление
+                            Admin
                         </button>
                     </a>
                 {% endif %}

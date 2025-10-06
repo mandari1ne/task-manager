@@ -141,16 +141,32 @@ def change_password(request):
 
     return render(request, 'change_password_modal.html', {'form': form})
 
-def get_personal_time(request):
-    current_user = request.user.profile
+@login_required(login_url='/login')
+def add_vacation(request):
+    django_user = request.user
+    custom_user = django_user.profile
+    user_schedule = custom_user.schedule
 
-    try:
-        user_schedule = models.UserSchedule.objects.get(user=current_user)
-        hours = {
-            'personal_hours_start': user_schedule.personal_hours_start,
-            'personal_hours_end': user_schedule.personal_hours_end,
-        }
-    except models.UserSchedule.DoesNotExist:
-        hours = {}
+    if request.method == 'POST':
+        vacation_form = forms.AddUserVacation(request.POST, user_schedule=user_schedule)
 
-    return JsonResponse(hours)
+        if vacation_form.is_valid():
+            vacation = vacation_form.save(commit=False)
+            vacation.user_schedule = user_schedule
+
+            vacation.save()
+
+            messages.success(request, 'Vacation added successful')
+            return redirect('add_vacation')
+
+        else:
+            messages.error(request, 'Please, fix the errors')
+
+    else:
+        vacation_form = forms.AddUserVacation(user_schedule=user_schedule)
+
+    context = {
+        'vacation_form': vacation_form,
+    }
+
+    return render(request, 'add_vacation.html', context)
