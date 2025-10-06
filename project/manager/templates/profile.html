@@ -73,13 +73,6 @@
             height: auto;
             width: 100%;
         }
-        .display-field {
-            background-color: #e9ecef;
-            border: 1px solid #ced4da;
-            color: #495057;
-            padding-top: 4px;
-            padding-bottom: 4px;
-        }
         .btn-primary {
             background: linear-gradient(135deg, #1E90FF, #00BFFF);
             border: none;
@@ -323,12 +316,12 @@
 
                             <div class="horizontal-field">
                                 <label class="form-label">From</label>
-                                <input id="personal-from" class="display-field">
+                                {{ schedule_form.personal_hours_start }}
                             </div>
 
                             <div class="horizontal-field">
                                 <label class="form-label">To</label>
-                                 <input id="personal-to" class="display-field">
+                                 {{ schedule_form.personal_hours_end }}
                             </div>
                         </div>
 
@@ -355,30 +348,6 @@
     </script>
 
     <script>
-
-        document.addEventListener('DOMContentLoaded', function () {
-            fetch('/personal_time/')
-                .then(response => {
-                    if (!response.ok) throw new Error('Network error');
-                    return response.json();
-                })
-                .then(data => {
-                    // Проверим, что данные есть
-                    if (data.personal_hours_start && data.personal_hours_end) {
-                        document.getElementById('personal-from').value = data.personal_hours_start;
-                        document.getElementById('personal-to').value = data.personal_hours_end;
-                    } else {
-                        document.getElementById('personal-from').value = '—';
-                        document.getElementById('personal-to').value = '—';
-                    }
-                })
-                .catch(err => {
-                    console.error('Ошибка при загрузке личного времени:', err);
-                    document.getElementById('personal-from').value = 'Ошибка';
-                    document.getElementById('personal-to').value = 'Ошибка';
-                });
-        });
-
         async function openPasswordModal() {
             try {
                 const response = await fetch("{% url 'change_password' %}");

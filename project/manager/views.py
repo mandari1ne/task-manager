@@ -79,13 +79,24 @@ def profile_view(request):
     django_user = request.user
     custom_user = django_user.profile
 
+    try:
+        user_schedule = custom_user.schedule
+    except models.UserSchedule.DoesNotExist:
+        user_schedule = {
+            'personal_hours_start': '',
+            'personal_hours_end': '',
+        }
+
     if request.method == 'POST':
         django_user_form = forms.DjangoUserChangeForm(request.POST, instance=django_user)
         custom_user_form = forms.CustomUserUpdateForm(request.POST, request.FILES, instance=custom_user)
+        schedule_form = forms.CustomUserUpdateSchedule(request.POST, instance=user_schedule)
 
-        if django_user_form.is_valid() and custom_user_form.is_valid():
+        if django_user_form.is_valid() and custom_user_form.is_valid() and schedule_form.is_valid():
             django_user_form.save()
             custom_user_form.save()
+            schedule_form.save()
+
             messages.success(request, 'Profile changed successful')
             return redirect('profile')
         else:
@@ -94,10 +105,12 @@ def profile_view(request):
     else:
         django_user_form = forms.DjangoUserChangeForm(instance=django_user)
         custom_user_form = forms.CustomUserUpdateForm(instance=custom_user)
+        schedule_form = forms.CustomUserUpdateSchedule(instance=user_schedule)
 
     context = {
         'django_user_form': django_user_form,
         'custom_user_form': custom_user_form,
+        'schedule_form': schedule_form,
         'custom_user': custom_user,
     }
 

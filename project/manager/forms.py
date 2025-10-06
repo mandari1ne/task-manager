@@ -1,7 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserChangeForm
 from django.contrib.auth import get_user_model
-from .models import CustomUser
+from .models import CustomUser, UserSchedule
 
 
 User = get_user_model()
@@ -25,14 +25,22 @@ class CustomUserUpdateForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Делаем поля только для чтения, но они будут передаваться в форме
+
         self.fields['department'].disabled = True
         self.fields['job_title'].widget.attrs['readonly'] = True
 
     def clean_department(self):
-        # Всегда возвращаем текущее значение
+
         return self.instance.department
 
     def clean_job_title(self):
-        # Всегда возвращаем текущее значение
+
         return self.instance.job_title
+
+class CustomUserUpdateSchedule(forms.ModelForm):
+    class Meta:
+        model = UserSchedule
+        fields = ('personal_hours_start', 'personal_hours_end')
+
+    # def __init__(self, *args, **kwargs):
+        # super().__init__(*args, **kwargs)
