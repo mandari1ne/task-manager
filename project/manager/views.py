@@ -1,6 +1,8 @@
 from django.conf import settings
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.contrib.auth.forms import PasswordChangeForm
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
@@ -81,21 +83,13 @@ def profile_view(request):
         django_user_form = forms.DjangoUserChangeForm(request.POST, instance=django_user)
         custom_user_form = forms.CustomUserUpdateForm(request.POST, request.FILES, instance=custom_user)
 
-        print("=== DEBUG ===")
-        print("FILES:", request.FILES)
-
         if django_user_form.is_valid() and custom_user_form.is_valid():
-            print("Forms are VALID - SAVING!")
             django_user_form.save()
             custom_user_form.save()
-            messages.success(request, 'Профиль успешно обновлен!')
+            messages.success(request, 'Profile changed successful')
             return redirect('profile')
         else:
-            print("=== FORM ERRORS ===")
-            print("DjangoUser errors:", django_user_form.errors)
-            print("CustomUser errors:", custom_user_form.errors)
-            print("=== END ERRORS ===")
-            messages.error(request, 'Пожалуйста, исправьте ошибки в форме.')
+            messages.error(request, 'Please correct the errors in the form')
 
     else:
         django_user_form = forms.DjangoUserChangeForm(instance=django_user)
@@ -108,3 +102,28 @@ def profile_view(request):
     }
 
     return render(request, 'profile.html', context)
+
+
+@login_required(login_url='/login')
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+
+        if form.is_valid():
+            user = form.save()
+            update_session_auth_hash(request, user)
+            return JsonResponse({
+                'success': True,
+                'message': 'The password has been successfully changed'
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'errors': form.errors,
+                'message': 'Please correct the errors in the form.'
+            })
+
+    else:
+        form = PasswordChangeForm(request.user)
+
+    return render(request, 'change_password_modal.html', {'form': form})
