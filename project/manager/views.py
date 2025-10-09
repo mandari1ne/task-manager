@@ -170,3 +170,34 @@ def add_vacation(request):
     }
 
     return render(request, 'add_vacation.html', context)
+
+def create_task(request):
+    django_user = request.user
+    custom_user = django_user.profile
+
+    if request.method == 'POST':
+        task_form = forms.CreateTaskForm(request.POST)
+        tag_form = forms.TagForm(request.POST)
+
+        if task_form.is_valid() and tag_form.is_valid():
+            task = task_form.save(commit=False)
+            task.created_by = custom_user
+            task.status = models.Status.objects.get(name='new')
+            task.save()
+
+            tag = tag_form.save(commit=False)
+            tag.task = task
+            tag.save()
+
+            messages.success(request, 'Task created successfully!')
+            return redirect('index')
+        else:
+            messages.error(request, 'Please fix the errors')
+    else:
+        task_form = forms.CreateTaskForm()
+        tag_form = forms.TagForm()
+
+    return render(request, 'create_task.html', {
+        'task_form': task_form,
+        'tag_form': tag_form,
+    })

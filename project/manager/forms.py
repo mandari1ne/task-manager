@@ -2,7 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserChangeForm
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
-from .models import CustomUser, UserSchedule, Vacation
+from .models import CustomUser, UserSchedule, Vacation, Task, Tag
 
 User = get_user_model()
 
@@ -85,3 +85,18 @@ class AddUserVacation(forms.ModelForm):
                     )
 
         return cleaned_data
+
+class CreateTaskForm(forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = ('head_task', 'title', 'managed_by',
+                  'priority', 'deadline')
+
+        widgets = {
+            'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+        }
+
+class TagForm(forms.ModelForm):
+    class Meta:
+        model = Tag
+        fields = ('category', 'subcategory', 'for_what')

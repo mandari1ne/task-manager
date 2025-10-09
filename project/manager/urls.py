@@ -13,4 +13,5 @@ urlpatterns = [
     path('profile/', views.profile_view, name='profile'),
     path('change_password/', views.change_password, name='change_password'),
     path('add_vacation/', views.add_vacation, name='add_vacation'),
+    path('create_task/', views.create_task, name='create_task'),
 ]

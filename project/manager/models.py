@@ -100,14 +100,15 @@ class Task(models.Model):
 
 
 class Tag(models.Model):
-    task = models.ManyToManyField(Task,
+    task = models.ForeignKey(Task,
+                             on_delete=models.CASCADE,
                              related_name='tags')
     category = models.CharField(max_length=100, blank=True, null=True)
     subcategory = models.CharField(max_length=100, blank=True, null=True)
     for_what = models.CharField(max_length=100, blank=True, null=True)
 
-    def __str__(self):
-        return f"Tag for task: {self.task.title}"
+    # def __str__(self):
+    #     return self.category
 
     def to_tag(self):
         parts = []
