@@ -322,11 +322,10 @@
                 Create task
             </button>
             <!--                <button class="but-create">Create task</button>-->
-            <a href="/add_vacation/" style="text-decoration: none;">
-                <button class="but-add" style="width: 100%;">
-                    Add vacation/weekend
-                </button>
-            </a>
+            <button class="but-add" style="width: 100%;" onclick="openAddVacationModal()">
+                Add vacation/weekend
+            </button>
+
             <!--                <button class="but-add">Add vacation/weekend</button>-->
 
             {% if user.is_superuser %}
@@ -352,6 +351,21 @@
             </button>
         </div>
         <div class="custom-modal-body" id="modalContent">
+            <div style="text-align: center; padding: 20px;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="addVacationModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header">
+            <h3 class="custom-modal-title">Add Vacation</h3>
+            <button class="custom-modal-close" onclick="closeAddVacationModal()" title="Close">
+                &times;
+            </button>
+        </div>
+        <div class="custom-modal-body" id="modalVacationContent">
             <div style="text-align: center; padding: 20px;">
             </div>
         </div>
@@ -410,7 +424,8 @@
                 form.onsubmit = window.submitTaskForm;
             }
 
-            applyModalStyles();
+            applyModalStyles(document.getElementById('createTaskModal'));
+
         })
         .catch(error => {
             console.error('Error loading form:', error);
@@ -422,8 +437,8 @@
         });
 }
 
-  function applyModalStyles() {
-      const modal = document.getElementById('createTaskModal');
+  function applyModalStyles(modal) {
+      if (!modal) return;
 
       // Применяем стили ко всем полям ввода
       const inputs = modal.querySelectorAll('input:not([type="checkbox"]):not([type="radio"])');
@@ -511,6 +526,104 @@
         alert('Error creating task: ' + error.message);
     });
 }
+
+    function openAddVacationModal() {
+        const modal = document.getElementById('addVacationModal');
+        modal.classList.add('show');
+
+        document.getElementById('modalVacationContent').innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div style="font-size: 18px; color: #1E90FF;">Loading form...</div>
+            </div>
+        `;
+
+        fetch('/add_vacation/')
+            .then(response => response.text())
+            .then(html => {
+                document.getElementById('modalVacationContent').innerHTML = html;
+
+                const form = document.querySelector('#addVacationModal form');
+                if (form) {
+                    form.action = '/add_vacation/';
+                    form.onsubmit = window.submitVacationForm;
+                }
+
+                applyModalStyles(document.getElementById('addVacationModal'));
+
+            })
+            .catch(error => {
+                console.error('Error loading form:', error);
+                document.getElementById('modalVacationContent').innerHTML = `
+                    <div style="color: red; text-align: center; padding: 40px; font-size: 16px;">
+                        Error loading form. Please try again.
+                    </div>
+                `;
+            });
+    }
+
+    function closeAddVacationModal() {
+        document.getElementById('addVacationModal').classList.remove('show');
+
+        $('#calendar').fullCalendar('refetchEvents');
+    }
+
+    document.getElementById('addVacationModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAddVacationModal();
+        }
+    });
+
+   window.submitVacationForm = function(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+
+        fetch('/add_vacation/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+        })
+        .then(response => {
+            if (response.ok) {
+                // Проверяем, действительно ли запрос успешен (статус 200)
+                return response.text().then(html => {
+                    // Если в ответе есть форма с ошибками, значит валидация не пройдена
+                    if (html.includes('form') && (html.includes('error') || html.includes('is-invalid'))) {
+                        // Показываем форму с ошибками
+                        document.getElementById('modalVacationContent').innerHTML = html;
+                        const newForm = document.querySelector('#addVacationModal form');
+                        if (newForm) {
+                            newForm.onsubmit = window.submitVacationForm;
+                        }
+                        applyModalStyles();
+                    } else {
+                        // Форма успешно сохранена
+                        closeAddVacationModal();
+                        alert('Vacation added successfully!');
+                        $('#calendar').fullCalendar('refetchEvents');
+                    }
+                });
+            } else {
+                // Сервер вернул ошибку (статус не 200)
+                return response.text().then(html => {
+                    document.getElementById('modalVacationContent').innerHTML = html;
+                    const newForm = document.querySelector('#addVacationModal form');
+                    if (newForm) {
+                        newForm.onsubmit = window.submitVacationForm;
+                    }
+                    applyModalStyles();
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error submitting vacation form:', error);
+            alert('Error adding vacation: ' + error.message);
+        });
+    };
+
 </script>
 
 </body>

@@ -157,10 +157,17 @@ def add_vacation(request):
             vacation.save()
 
             messages.success(request, 'Vacation added successful')
-            return redirect('add_vacation')
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return HttpResponse(status=200)
+            else:
+                return redirect('add_vacation')
 
         else:
             messages.error(request, 'Please, fix the errors')
+
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return render(request, 'add_vacation.html', {'vacation_form': vacation_form})
 
     else:
         vacation_form = forms.AddUserVacation(user_schedule=user_schedule)

@@ -1,7 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserChangeForm
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ValidationError
 from .models import CustomUser, UserSchedule, Vacation, Task, Tag
 
 User = get_user_model()
@@ -71,7 +70,7 @@ class AddUserVacation(forms.ModelForm):
             return cleaned_data
 
         if date_end < date_start:
-            raise ValidationError('Date End should be greater than Date Start')
+            raise forms.ValidationError('Date End should be greater than Date Start')
 
         # проверка на пересечение с существующими записями
         if self.user_schedule:
@@ -79,7 +78,7 @@ class AddUserVacation(forms.ModelForm):
 
             for vacation in existing_vacations:
                 if not (date_end < vacation.date_start or date_start > vacation.date_end):
-                    raise ValidationError(
+                    raise forms.ValidationError(
                         f'The vacation intersects with an existing period: '
                         f'{vacation.date_start} — {vacation.date_end}'
                     )
