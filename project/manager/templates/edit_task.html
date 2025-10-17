@@ -39,6 +39,9 @@
         <button type="submit" class="custom-btn custom-btn-primary">
             <i class="bi bi-check-circle me-1"></i> Save Changes
         </button>
+        <button type="button" class="custom-btn custom-btn-danger" onclick="deleteTask({{ task.id }})">
+            <i class="bi bi-trash me-1"></i> Delete
+        </button>
         <button type="button" class="custom-btn custom-btn-secondary" onclick="closeEditTaskModal()">
             Cancel
         </button>

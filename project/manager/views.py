@@ -239,3 +239,25 @@ def edit_task(request, task_id):
         'tag_form': tag_form,
         'task': task,
     })
+
+def delete_task(request, task_id):
+    try:
+        task = models.Task.objects.get(id=task_id)
+
+        task_title = task.title
+        task.delete()
+
+        return JsonResponse({
+            'success': True,
+            'message': f'Task {task_title} deleted successfully',
+        })
+    except models.Task.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Task not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e),
+        }, status=500)
