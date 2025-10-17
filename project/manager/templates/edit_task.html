@@ -1,0 +1,46 @@
+<form method="post" id="editTaskForm" novalidate>
+    {% csrf_token %}
+
+    <div class="custom-form-group">
+        <h4 class="section-title">Task details</h4>
+        {{ task_form.non_field_errors }}
+        {% for field in task_form %}
+            <div class="custom-form-group">
+                <label class="custom-form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                    <div style="color: red; font-size: 0.8rem; margin-top: 2px;">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="custom-form-group">
+        <h4 class="section-title">Tag details</h4>
+        {{ tag_form.non_field_errors }}
+        {% for field in tag_form %}
+            <div class="custom-form-group">
+                <label class="custom-form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}
+                    <div style="font-size: 0.8rem; color: #666; margin-top: 2px;">{{ field.help_text }}</div>
+                {% endif %}
+                {% for error in field.errors %}
+                    <div style="color: red; font-size: 0.8rem; margin-top: 2px;">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div class="custom-modal-footer">
+        <button type="submit" class="custom-btn custom-btn-primary">
+            <i class="bi bi-check-circle me-1"></i> Save Changes
+        </button>
+        <button type="button" class="custom-btn custom-btn-secondary" onclick="closeEditTaskModal()">
+            Cancel
+        </button>
+    </div>
+</form>

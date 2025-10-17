@@ -95,6 +95,16 @@ class CreateTaskForm(forms.ModelForm):
             'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
         }
 
+class EditeTaskForm(forms.ModelForm):
+    class Meta:
+        model = Task
+        fields = ('head_task', 'title', 'managed_by',
+                  'priority', 'deadline', 'status')
+
+        widgets = {
+            'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+        }
+
 class TagForm(forms.ModelForm):
     class Meta:
         model = Tag

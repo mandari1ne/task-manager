@@ -1,9 +1,11 @@
+from wsgiref.util import request_uri
+
 from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
 from django.http import JsonResponse, HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from django.contrib import messages
@@ -49,7 +51,7 @@ def get_tasks(request):
         tasks = models.Task.objects.filter(
             managed_by=current_user,
             deadline__range=[start, end],
-        ).values('title', 'deadline', 'status__name', 'updated_at')
+        ).values('id', 'title', 'deadline', 'status__name', 'updated_at')
 
         events = []
         for task in tasks:
@@ -57,6 +59,7 @@ def get_tasks(request):
             css_slug = status.replace(' ', '-').lower()
 
             events.append({
+                'id': str(task['id']),
                 'title': task['title'],
                 'start': task['deadline'].isoformat(),
                 'end': task['deadline'].isoformat(),
@@ -207,4 +210,32 @@ def create_task(request):
     return render(request, 'create_task.html', {
         'task_form': task_form,
         'tag_form': tag_form,
+    })
+
+def edit_task(request, task_id):
+    task = get_object_or_404(models.Task, id=task_id)
+    tag = task.tag
+
+    if request.method == 'POST':
+        task_form = forms.EditeTaskForm(request.POST, instance=task)
+        tag_form = forms.TagForm(request.POST, instance=tag)
+
+        if task_form.is_valid() and tag_form.is_valid():
+            task_form.save()
+            tag_form.save()
+
+            messages.success(request, 'Task updated successfully')
+            return redirect('index')
+
+        else:
+            messages.error(request, 'Please fix the errors  bellow')
+
+    else:
+        task_form = forms.EditeTaskForm(instance=task)
+        tag_form = forms.TagForm(instance=tag)
+
+    return render(request, 'edit_task.html', {
+        'task_form': task_form,
+        'tag_form': tag_form,
+        'task': task,
     })

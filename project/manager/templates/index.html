@@ -168,7 +168,7 @@
           .custom-modal-header {
               background: linear-gradient(135deg, #1E90FF, #00BFFF);
               color: white;
-              padding: 15px 20px;
+              padding: 15px 10px;
               border-radius: 8px 8px 0 0;
               display: flex;
               justify-content: space-between;
@@ -208,7 +208,7 @@
           }
 
           .custom-modal-body {
-              padding: 20px;
+              padding: 10px;
           }
 
           .custom-form-group {
@@ -283,6 +283,7 @@
               border-bottom: 2px solid #1E90FF;
               padding-bottom: 8px;
               margin-bottom: 20px;
+              margin-top: 5px;
               font-size: 1.1rem;
               font-weight: bold;
           }
@@ -357,6 +358,21 @@
     </div>
 </div>
 
+<div id="editeTaskModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <div class="custom-modal-header">
+            <h3 class="custom-modal-title">Edite Task</h3>
+            <button class="custom-modal-close" onclick="closeEditTaskModal()" title="Close">
+                &times;
+            </button>
+        </div>
+        <div class="custom-modal-body" id="modalEditeContent">
+            <div style="text-align: center; padding: 20px;">
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="addVacationModal" class="custom-modal">
     <div class="custom-modal-content">
         <div class="custom-modal-header">
@@ -377,6 +393,8 @@
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@3.10.5/dist/fullcalendar.min.js'></script>
 
 <script>
+    let calendar;
+
     $(function() {
       const calendar = $('#calendar').fullCalendar({
         defaultView: 'agendaWeek',
@@ -390,6 +408,9 @@
         eventRender: function(event, element) {
           const status = `<br><span style="font-weight: bold; font-size: 0.9em; opacity: 0.8;">${event.status}</span>`;
           element.find('.fc-title').append(status);
+        },
+        eventClick: function(eventInfo) {
+            openEditTaskModal(eventInfo.id);
         }
       });
 
@@ -624,6 +645,85 @@
         });
     };
 
+    function openEditTaskModal(taskId) {
+        const modal = document.getElementById('editeTaskModal');
+        modal.classList.add('show');
+
+        const modalContent = document.getElementById('modalEditeContent');
+        modalContent.innerHTML = `
+            <div style="text-align:center;padding:40px;">
+                <div style="font-size:18px;color:#1E90FF;">Loading...</div>
+            </div>
+        `;
+
+        fetch(`/edit_task/${taskId}/`)
+            .then(response => {
+                if (!response.ok) throw new Error('Form not found');
+                return response.text();
+            })
+            .then(html => {
+                modalContent.innerHTML = html;
+
+                applyModalStyles(document.getElementById('editeTaskModal'));
+
+                const form = document.querySelector('#editTaskForm');
+                if (form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+
+                        const formData = new FormData(form);
+
+                        fetch(`/edit_task/${taskId}/`, {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                        })
+                        .then(response => {
+                            if (response.redirected || response.ok) {
+                                modal.classList.remove('show');
+
+                                setTimeout(() => {
+                                    modalContent.innerHTML = '';
+                                }, 300);
+
+                                $('#calendar').fullCalendar('refetchEvents');
+
+                                alert('Task updated successfully!');
+                            } else {
+                                return response.text().then(html => {
+                                    modalContent.innerHTML = html;
+                                    applyModalStyles(document.getElementById('editeTaskModal'));
+                                });
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error updating task:', error);
+                            modalContent.innerHTML = `
+                                <p style="color:red;text-align:center;">Error updating task. Try again later.</p>
+                            `;
+                        });
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading form:', error);
+                modalContent.innerHTML = `<p style="color:red;text-align:center;">Error loading form</p>`;
+            });
+    }
+
+    function closeEditTaskModal() {
+        document.getElementById('editeTaskModal').classList.remove('show');
+        $('#calendar').fullCalendar('refetchEvents');
+    }
+
+    document.getElementById('editeTaskModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEditTaskModal();
+        }
+    });
 </script>
 
 </body>

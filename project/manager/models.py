@@ -68,6 +68,37 @@ class Status(models.Model):
         return self.name
 
 
+class Tag(models.Model):
+    # task = models.ForeignKey(Task,
+    #                          on_delete=models.CASCADE,
+    #                          related_name='tags')
+    category = models.CharField(max_length=100, blank=True, null=True)
+    subcategory = models.CharField(max_length=100, blank=True, null=True)
+    for_what = models.CharField(max_length=100, blank=True, null=True)
+
+    def __str__(self):
+        return f'{self.category} - {self.subcategory} - {self.for_what}'
+
+    def to_tag(self):
+        parts = []
+
+        for field in [self.category, self.subcategory]:
+            parts.append(field if field else '_')
+
+        parts.append(self.for_what if self.for_what else '_')
+
+        return '#' + '-'.join(parts)
+
+    def to_description(self, tag):
+        parts = tag[1:].split('-')
+
+        new_parts = [p if p != '_' else None for p in parts]
+
+        self.category = new_parts[0]
+        self.subcategory = new_parts[1]
+        self.for_what = new_parts[2]
+
+
 class Task(models.Model):
     head_task = models.ForeignKey('self',
                                   on_delete=models.CASCADE,
@@ -95,39 +126,13 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    tag = models.ForeignKey(Tag,
+                            on_delete=models.CASCADE,
+                            related_name='tag_tasks',
+                            null=True, blank=True)
+
     def __str__(self):
         return f'{self.title} - {self.status} - {self.deadline}'
-
-
-class Tag(models.Model):
-    task = models.ForeignKey(Task,
-                             on_delete=models.CASCADE,
-                             related_name='tags')
-    category = models.CharField(max_length=100, blank=True, null=True)
-    subcategory = models.CharField(max_length=100, blank=True, null=True)
-    for_what = models.CharField(max_length=100, blank=True, null=True)
-
-    # def __str__(self):
-    #     return self.category
-
-    def to_tag(self):
-        parts = []
-
-        for field in [self.category, self.subcategory]:
-            parts.append(field if field else '_')
-
-        parts.append(self.for_what if self.for_what else '_')
-
-        return '#' + '-'.join(parts)
-
-    def to_description(self, tag):
-        parts = tag[1:].split('-')
-
-        new_parts = [p if p != '_' else None for p in parts]
-
-        self.category = new_parts[0]
-        self.subcategory = new_parts[1]
-        self.for_what = new_parts[2]
 
 
 class Notification(models.Model):
