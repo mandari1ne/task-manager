@@ -246,6 +246,9 @@ def edit_task(request, task_id):
     task = get_object_or_404(models.Task, id=task_id)
     tag = task.tag
 
+    # создана ли задача текущим пользователем и кто ее выполняет
+    can_edit = task.created_by == request.user.profile or task.managed_by == request.user.profile
+
     if request.method == 'POST':
         task_form = forms.EditeTaskForm(request.POST, instance=task)
         tag_form = forms.TagForm(request.POST, instance=tag)
@@ -268,6 +271,7 @@ def edit_task(request, task_id):
         'task_form': task_form,
         'tag_form': tag_form,
         'task': task,
+        'can_edit': can_edit,
     })
 
 

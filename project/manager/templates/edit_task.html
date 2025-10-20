@@ -35,6 +35,7 @@
         {% endfor %}
     </div>
 
+    {% if can_edit %}
     <div class="custom-modal-footer">
         <button type="submit" class="custom-btn custom-btn-primary">
             <i class="bi bi-check-circle me-1"></i> Save Changes
@@ -46,4 +47,14 @@
             Cancel
         </button>
     </div>
+    {% else %}
+<div class="custom-modal-footer" style="display: flex; align-items: center; gap: 15px;">
+    <div style="color: #666; margin: 0;">
+        <i class="bi bi-info-circle"></i> You can only view this task
+    </div>
+    <button type="button" class="custom-btn custom-btn-secondary" onclick="closeEditTaskModal()">
+        Cancel
+    </button>
+</div>
+{% endif %}
 </form>
