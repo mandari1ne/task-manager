@@ -96,7 +96,7 @@
               flex-direction: column;
               gap: 10px;
               padding: 10px;
-              background: #f8f9fa;
+              background: #d1f6fd;
               width: 180px;
               margin-left: 10px;
               border: 1px solid #ddd;
@@ -312,6 +312,66 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
         }
+
+        .schedule-search-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 10px;
+            background: #b8eff5;
+            width: 180px;
+            margin-left: 10px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-style: solid;
+            border-width: 2px;
+            border-color: #1E90FF;
+        }
+
+        .schedule-search-select[multiple] {
+            width: 100%;
+            padding: 8px;
+            border: 2px solid #7ecadd;
+            border-radius: 6px;
+            background: white;
+            margin-bottom: 8px;
+            height: auto;
+            min-height: 80px;
+        }
+
+        .schedule-search-select[multiple]:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .schedule-search-select[multiple] option {
+            padding: 5px;
+            margin: 2px;
+        }
+
+        .user-option {
+            color: #000b48;
+        }
+
+        .schedule-search-select[multiple] option:checked {
+            background: #1E90FF linear-gradient(0deg, #1E90FF 0%, #1E90FF 100%);
+            color: white;
+        }
+
+        .apply-users-btn {
+            width: 100%;
+            padding: 5px;
+            background: #05abca;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
     </style>
 </head>
 <body>
@@ -329,7 +389,8 @@
             <a href="/profile/">
                 <button class="but-profile" style="width: 100%;">Profile</button>
             </a>
-            <button class="but-search">Schedule search</button>
+<!--            <button class="but-search">Schedule search</button>-->
+
             <button class="but-create" style="width: 100%;" onclick="openCreateTaskModal()">
                 Create task
             </button>
@@ -347,6 +408,22 @@
                 </button>
             </a>
             {% endif %}
+        </div>
+
+        <div class="schedule-search-wrapper">
+            <select class="schedule-search-select" id="userSelect" multiple>
+                <option value="" disabled>Schedule search</option>
+                {% for user in users %}
+                    <option class="user-option" value="{{ user.profile.id }}" {% if user.profile.id == request.user.profile.id %}selected{% endif %}>
+                        {% if user.get_full_name %}
+                            {{ user.get_full_name }}
+                        {% else %}
+                            {{ user.username }}
+                        {% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <button class="apply-users-btn" onclick="applyUserSelection()">Apply Selection</button>
         </div>
     </div>
 
@@ -404,33 +481,76 @@
 <script src='https://cdn.jsdelivr.net/npm/fullcalendar@3.10.5/dist/fullcalendar.min.js'></script>
 
 <script>
+    let selectedUsers = [{{ request.user.profile.id }}];
     let calendar;
 
-    $(function() {
-      const calendar = $('#calendar').fullCalendar({
-        defaultView: 'agendaWeek',
-        header: {
-          left: 'prev,next today',
-          center: 'title',
-          right: 'agendaWeek,agendaDay'
-        },
-        height: 500,
-        events: '/tasks/',
-        eventRender: function(event, element) {
-          const status = `<br><span style="font-weight: bold; font-size: 0.9em; opacity: 0.8;">${event.status}</span>`;
-          element.find('.fc-title').append(status);
-        },
-        eventClick: function(eventInfo) {
-            openEditTaskModal(eventInfo.id);
+    function applyUserSelection() {
+        const select = document.getElementById('userSelect');
+        const selectedOptions = Array.from(select.selectedOptions);
+
+        selectedUsers = selectedOptions
+            .map(option => option.value)
+            .filter(value => value && value !== '');
+
+        if (selectedUsers.length === 0) {
+            selectedUsers = [{{ request.user.profile.id }}];
         }
-      });
 
-      // слушаем событие выбора даты из мини-календаря
-      window.addEventListener('calendarDaySelected', (e) => {
-        const selectedDate = e.detail.date;
-        calendar.fullCalendar('gotoDate', selectedDate);
+        refreshCalendarWithUsers();
+    }
 
-      });
+    function refreshCalendarWithUsers() {
+        if (calendar) {
+            calendar.fullCalendar('refetchEvents');
+        }
+    }
+
+    $(function() {
+        calendar = $('#calendar').fullCalendar({
+            defaultView: 'agendaWeek',
+            header: {
+                left: 'prev,next today',
+                center: 'title',
+                right: 'agendaWeek,agendaDay'
+            },
+            height: 500,
+            events: function(start, end, timezone, callback) {
+                $.ajax({
+                    url: '/tasks/',
+                    dataType: 'json',
+                    data: {
+                        start: start.format(),
+                        end: end.format(),
+                        users: selectedUsers
+                    },
+                    success: function(events) {
+                        callback(events);
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading events:', error);
+                        callback([]);
+                    }
+                });
+            },
+            eventRender: function(event, element) {
+                const status = `<br><span style="font-weight: bold; font-size: 0.9em; opacity: 0.8;">${event.status}</span>`;
+                element.find('.fc-title').append(status);
+            },
+            eventClick: function(eventInfo) {
+                openEditTaskModal(eventInfo.id);
+            }
+        });
+
+        // слушаем событие выбора даты из мини-календаря
+        window.addEventListener('calendarDaySelected', (e) => {
+            const selectedDate = e.detail.date;
+            calendar.fullCalendar('gotoDate', selectedDate);
+        });
+
+        const currentUserOption = document.querySelector(`#userSelect option[value="{{ request.user.profile.id }}"]`);
+        if (currentUserOption) {
+            showSelectedUsersInfo([currentUserOption]);
+        }
     });
 
            function openCreateTaskModal() {

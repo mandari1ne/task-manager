@@ -1,5 +1,3 @@
-from wsgiref.util import request_uri
-
 from django.conf import settings
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -12,67 +10,96 @@ from django.contrib import messages
 from . import models, forms
 import json, os
 
+from django.contrib.auth.models import User
+
+
 @method_decorator(login_required(login_url='/login'), name='dispatch')
 class IndexView(TemplateView):
     template_name = 'index.html'
 
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        users = User.objects.exclude(id=self.request.user.id).order_by('username')
+        context['users'] = users
+
+
+        return context
+
+
 def get_tasks(request):
-    # request.user.profile - ЗАМЕНИТЬ НАДО БУДЕТ
-    # test_user = models.CustomUser.objects.get(django_user__username='user')
-    current_user = request.user.profile
-    current_user_id = current_user.id
+    selected_users = request.GET.getlist('users[]')
 
-    tasks_dir = settings.STATIC_ROOT
-
-    # создем, если не существует
-    os.makedirs(tasks_dir, exist_ok=True)
-    tasks_file = os.path.join(tasks_dir, f'tasks_user_{current_user_id}.json')
+    if not selected_users:
+        selected_users = [str(request.user.profile.id)]
+    else:
+        current_user_id = str(request.user.profile.id)
+        if current_user_id not in selected_users:
+            selected_users.append(current_user_id)
 
     start = request.GET.get("start")
     end = request.GET.get("end")
 
-    use_cache = False
-    if os.path.exists(tasks_file):
-        try:
-            with open(tasks_file, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-        except json.JSONDecodeError:
-            data = {}
+    events = []
 
-        last_task_update = models.Task.objects.filter(managed_by=current_user).order_by('-updated_at').first()
-        if last_task_update:
-            if data.get('last_updated') == last_task_update.updated_at.isoformat():
-                use_cache = True
-                tasks = data['tasks']
+    for user_id in selected_users:
+        tasks_file = os.path.join(settings.STATIC_ROOT, f'tasks_user_{user_id}.json')
 
-    if use_cache:
-        events = data['tasks']
-    else:
-        tasks = models.Task.objects.filter(
-            managed_by=current_user,
-            deadline__range=[start, end],
-        ).values('id', 'title', 'deadline', 'status__name', 'updated_at')
+        use_cache = False
+        user_events = []
 
-        events = []
-        for task in tasks:
-            status = task['status__name']
-            css_slug = status.replace(' ', '-').lower()
+        if os.path.exists(tasks_file):
+            try:
+                with open(tasks_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+            except json.JSONDecodeError:
+                data = {}
 
-            events.append({
-                'id': str(task['id']),
-                'title': task['title'],
-                'start': task['deadline'].isoformat(),
-                'end': task['deadline'].isoformat(),
-                'status': task['status__name'],
-                'className': 'status-' + css_slug,
-            })
+            last_task_update = models.Task.objects.filter(
+                managed_by_id=user_id
+            ).order_by('-updated_at').first()
 
-        last_updated = max(task['updated_at'].isoformat() for task in tasks) if tasks else ''
-        with open(tasks_file, 'w', encoding='utf-8') as f:
-            json.dump({
-                'last_updated': last_updated,
-                'tasks': events
-            }, f, ensure_ascii=False, indent=4)
+            if last_task_update:
+                last_update = last_task_update.updated_at.isoformat()
+                if data.get('last_updated') == last_update:
+                    use_cache = True
+                    user_events = data['tasks']
+
+        if not use_cache:
+            tasks = models.Task.objects.filter(
+                managed_by_id=user_id,
+                deadline__range=[start, end],
+            ).select_related('status', 'managed_by').values(
+                'id', 'title', 'deadline', 'status__name',
+                'updated_at', 'managed_by_id', 'managed_by__django_user__first_name',
+                'managed_by__django_user__last_name'
+            )
+
+            for task in tasks:
+                status = task['status__name']
+                css_slug = status.replace(' ', '-').lower()
+
+                user_name = f"{task['managed_by__django_user__first_name']} {task['managed_by__django_user__last_name']}"
+
+                user_events.append({
+                    'id': str(task['id']),
+                    'title': f"{task['title']} ({user_name})",
+                    'start': task['deadline'].isoformat(),
+                    'end': task['deadline'].isoformat(),
+                    'status': task['status__name'],
+                    'className': 'status-' + css_slug,
+                    'user_id': str(task['managed_by_id']),
+                    'user_name': user_name
+                })
+
+            last_updated = max(task['updated_at'].isoformat() for task in tasks) if tasks else ''
+            with open(tasks_file, 'w', encoding='utf-8') as f:
+                json.dump({
+                    'last_updated': last_updated,
+                    'tasks': user_events
+                }, f, ensure_ascii=False, indent=4)
+
+        events.extend(user_events)
 
     return JsonResponse(events, safe=False)
 
@@ -144,6 +171,7 @@ def change_password(request):
 
     return render(request, 'change_password_modal.html', {'form': form})
 
+
 @login_required(login_url='/login')
 def add_vacation(request):
     django_user = request.user
@@ -181,6 +209,7 @@ def add_vacation(request):
 
     return render(request, 'add_vacation.html', context)
 
+
 def create_task(request):
     django_user = request.user
     custom_user = django_user.profile
@@ -212,6 +241,7 @@ def create_task(request):
         'tag_form': tag_form,
     })
 
+
 def edit_task(request, task_id):
     task = get_object_or_404(models.Task, id=task_id)
     tag = task.tag
@@ -239,6 +269,7 @@ def edit_task(request, task_id):
         'tag_form': tag_form,
         'task': task,
     })
+
 
 def delete_task(request, task_id):
     try:
