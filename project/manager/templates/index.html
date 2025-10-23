@@ -639,45 +639,57 @@
           });
 
           window.submitTaskForm = function(event) {
-    event.preventDefault();
-    const form = event.target;
-    const formData = new FormData(form);
+                event.preventDefault();
+                const form = event.target;
+                const formData = new FormData(form);
 
-    // Явно указываем правильный URL
-    const actionUrl = '/create_task/';
+                const actionUrl = '/create_task/';
 
-    fetch(actionUrl, {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-    })
-    .then(response => {
-        if (response.ok) {
-            closeCreateTaskModal();
-            alert('Task created successfully!');
-            // Обновляем календарь
-            $('#calendar').fullCalendar('refetchEvents');
-        } else {
-            // Ошибки валидации
-            return response.text().then(html => {
-                document.getElementById('modalContent').innerHTML = html;
-                // Перепривязываем обработчик события к новой форме
-                const newForm = document.querySelector('#createTaskModal form');
-                if (newForm) {
-                    newForm.onsubmit = window.submitTaskForm;
-                }
-                applyModalStyles();
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Error submitting form:', error);
-        alert('Error creating task: ' + error.message);
-    });
-}
+                fetch(actionUrl, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': formData.get('csrfmiddlewaretoken'),
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                })
+                .then(response => {
+                    if (response.redirected) {
+                        closeCreateTaskModal();
+                        alert('Task created successfully!');
+                        $('#calendar').fullCalendar('refetchEvents');
+                    } else {
+                        return response.text().then(html => {
+                            const patterns = [
+                                /Work hours: \d{2}:\d{2} - \d{2}:\d{2}/,
+                                /Personal time: \d{2}:\d{2} - \d{2}:\d{2}/,
+                                /Vacation: \d{4}-\d{2}-\d{2} - \d{4}-\d{2}-\d{2}/,
+                                /schedule not found/
+                            ];
+
+                            let foundError = null;
+
+                            for (const pattern of patterns) {
+                                const match = html.match(pattern);
+                                if (match) {
+                                    foundError = match[0];
+                                    break;
+                                }
+                            }
+
+                            if (foundError) {
+                                alert('Error: ' + foundError);
+                            } else {
+                                alert('Please fix the errors in the form');
+                            }
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting form:', error);
+                    alert('Error creating task: ' + error.message);
+                });
+            }
 
     function openAddVacationModal() {
         const modal = document.getElementById('addVacationModal');
@@ -794,7 +806,6 @@
             })
             .then(html => {
                 modalContent.innerHTML = html;
-
                 applyModalStyles(document.getElementById('editeTaskModal'));
 
                 const form = document.querySelector('#editTaskForm');
@@ -813,35 +824,50 @@
                             },
                         })
                         .then(response => {
-                            if (response.redirected || response.ok) {
+                            if (response.redirected) {
                                 modal.classList.remove('show');
-
                                 setTimeout(() => {
                                     modalContent.innerHTML = '';
                                 }, 300);
-
                                 $('#calendar').fullCalendar('refetchEvents');
-
                                 alert('Task updated successfully!');
                             } else {
                                 return response.text().then(html => {
-                                    modalContent.innerHTML = html;
-                                    applyModalStyles(document.getElementById('editeTaskModal'));
+                                    const patterns = [
+                                        /Work hours: \d{2}:\d{2} - \d{2}:\d{2}/,
+                                        /Personal time: \d{2}:\d{2} - \d{2}:\d{2}/,
+                                        /Vacation: \d{4}-\d{2}-\d{2} - \d{4}-\d{2}-\d{2}/,
+                                        /schedule not found/
+                                    ];
+
+                                    let foundError = null;
+
+                                    for (const pattern of patterns) {
+                                        const match = html.match(pattern);
+                                        if (match) {
+                                            foundError = match[0];
+                                            break;
+                                        }
+                                    }
+
+                                    if (foundError) {
+                                        alert('Error: ' + foundError);
+                                    } else {
+                                        alert('Please fix the errors in the form');
+                                    }
                                 });
                             }
                         })
                         .catch(error => {
                             console.error('Error updating task:', error);
-                            modalContent.innerHTML = `
-                                <p style="color:red;text-align:center;">Error updating task. Try again later.</p>
-                            `;
+                            alert('Error updating task: ' + error.message);
                         });
                     });
                 }
             })
             .catch(error => {
                 console.error('Error loading form:', error);
-                modalContent.innerHTML = `<p style="color:red;text-align:center;">Error loading form</p>`;
+                alert('Error loading form: ' + error.message);
             });
     }
 

@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.forms import UserChangeForm
 from django.contrib.auth import get_user_model
 from .models import CustomUser, UserSchedule, Vacation, Task, Tag
+from datetime import datetime, time
 
 User = get_user_model()
 
@@ -85,25 +86,77 @@ class AddUserVacation(forms.ModelForm):
 
         return cleaned_data
 
+
 class CreateTaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ('head_task', 'title', 'managed_by',
-                  'priority', 'deadline')
-
+        fields = ('head_task', 'title', 'managed_by', 'priority', 'deadline')
         widgets = {
             'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        managed_by = cleaned_data.get('managed_by')
+        deadline = cleaned_data.get('deadline')
+
+        if managed_by and deadline:
+            validation_error = validate_task_time_for_user(managed_by, deadline)
+            if validation_error:
+                raise forms.ValidationError(validation_error)
+
+        return cleaned_data
+
 
 class EditeTaskForm(forms.ModelForm):
     class Meta:
         model = Task
-        fields = ('head_task', 'title', 'managed_by',
-                  'priority', 'deadline', 'status')
-
+        fields = ('head_task', 'title', 'managed_by', 'priority', 'deadline', 'status')
         widgets = {
             'deadline': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
         }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        managed_by = cleaned_data.get('managed_by')
+        deadline = cleaned_data.get('deadline')
+
+        if managed_by and deadline:
+            validation_error = validate_task_time_for_user(managed_by, deadline)
+            if validation_error:
+                raise forms.ValidationError(validation_error)
+
+        return cleaned_data
+
+
+def validate_task_time_for_user(user, deadline):
+    task_date = deadline.date()
+    task_time = deadline.time()
+
+    try:
+        user_schedule = UserSchedule.objects.get(user=user)
+
+        if task_time < user_schedule.work_hours_start or task_time > user_schedule.work_hours_end:
+            return f'Work hours: {user_schedule.work_hours_start.strftime('%H:%M')} - {user_schedule.work_hours_end.strftime('%H:%M')}'
+
+        if user_schedule.personal_hours_start and user_schedule.personal_hours_end:
+            if user_schedule.personal_hours_start <= task_time <= user_schedule.personal_hours_end:
+                return f'Personal time: {user_schedule.personal_hours_start.strftime('%H:%M')} - {user_schedule.personal_hours_end.strftime('%H:%M')}'
+
+        vacations = Vacation.objects.filter(
+            user_schedule__user=user,
+            date_start__lte=task_date,
+            date_end__gte=task_date
+        )
+
+        if vacations.exists():
+            vacation = vacations.first()
+            return f'Vacation: {vacation.date_start} - {vacation.date_end}'
+
+    except UserSchedule.DoesNotExist:
+        return f'{user} schedule not found'
+
+    return None
 
 class TagForm(forms.ModelForm):
     class Meta:
