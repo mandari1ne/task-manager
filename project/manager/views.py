@@ -94,7 +94,6 @@ def get_tasks(request):
             # Загружаем задачи
             tasks = models.Task.objects.filter(
                 managed_by_id=user_id,
-                deadline__range=[start, end],
             ).select_related('status', 'managed_by').values(
                 'id', 'title', 'deadline', 'status__name',
                 'updated_at', 'managed_by_id', 'managed_by__django_user__first_name',
