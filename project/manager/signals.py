@@ -88,7 +88,7 @@ def notify_then_delete(sender, instance, **kwargs):
 
     Notification.objects.create(
         user=user,
-        type='Create',
+        type='Delete',
         message=text,
         task=task,
     )
