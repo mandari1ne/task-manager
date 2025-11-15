@@ -320,14 +320,17 @@ def create_task(request):
         tag_form = forms.TagForm(request.POST)
 
         if task_form.is_valid() and tag_form.is_valid():
+            tag = tag_form.save(commit=False)
+            if not (tag.category or tag.subcategory or tag.for_what):
+                tag = None
+            else:
+                tag.save()
+
             task = task_form.save(commit=False)
             task.created_by = custom_user
             task.status = models.Status.objects.get(name='new')
+            task.tag = tag
             task.save()
-
-            tag = tag_form.save(commit=False)
-            tag.task = task
-            tag.save()
 
             messages.success(request, 'Task created successfully!')
             return redirect('index')
@@ -355,8 +358,18 @@ def edit_task(request, task_id):
         tag_form = forms.TagForm(request.POST, instance=tag)
 
         if task_form.is_valid() and tag_form.is_valid():
-            task_form.save()
-            tag_form.save()
+            tag = tag_form.save()
+            task = task_form.save(commit=False)
+
+            if tag.category or tag.subcategory or tag.for_what:
+                task.tag = tag
+            else:
+                task.tag = None
+
+            task.save()
+
+            messages.success(request, 'Task updated successfully')
+            return redirect('index')
 
             messages.success(request, 'Task updated successfully')
             return redirect('index')
