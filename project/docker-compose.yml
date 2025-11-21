@@ -1,0 +1,118 @@
+services:
+  django:
+    build:
+      context: .
+    container_name: django
+    command: >
+      bash -c "
+           python manage.py makemigrations &&
+           python manage.py migrate &&
+           python manage.py shell -c \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.filter(username='admin').exists() or User.objects.create_superuser('admin', 'marina.stakhovets@gmail.com', 'admin')\" &&
+           python manage.py runserver 0.0.0.0:8000
+         "
+    volumes:
+      - .:/usr/src/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      POSTGRES_HOST: pgdb
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS}
+    depends_on:
+      - pgdb
+      - redis
+      - maildev
+
+  celery:
+    build:
+      context: .
+    container_name: celery
+    command: >
+      bash -c "
+        python wait_for_db.py &&
+        celery -A project worker -l info -P solo
+      "
+    volumes:
+      - .:/usr/src/app
+    env_file:
+      - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      POSTGRES_HOST: pgdb
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS}
+    depends_on:
+      - django
+      - redis
+      - pgdb
+      - maildev
+
+  celery-beat:
+    build:
+      context: .
+    container_name: celery-beat
+    command: >
+      bash -c "
+        python wait_for_db.py &&
+        celery -A project beat -l info
+      "
+    volumes:
+      - .:/usr/src/app
+    env_file:
+      - .env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      POSTGRES_HOST: pgdb
+      EMAIL_HOST: ${EMAIL_HOST}
+      EMAIL_PORT: ${EMAIL_PORT}
+      EMAIL_HOST_USER: ${EMAIL_HOST_USER}
+      EMAIL_HOST_PASSWORD: ${EMAIL_HOST_PASSWORD}
+      EMAIL_USE_TLS: ${EMAIL_USE_TLS}
+    depends_on:
+      - django
+      - redis
+      - pgdb
+      - maildev
+
+  pgdb:
+    image: postgres:16
+    container_name: pgdb
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  maildev:
+    image: maildev/maildev
+    container_name: maildev
+    ports:
+      - "1080:1080"   # веб-интерфейс
+      - "1025:1025"   # SMTP сервер
+
+
+volumes:
+  pgdata:

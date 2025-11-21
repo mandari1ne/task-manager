@@ -11,7 +11,7 @@ from django.views.generic import TemplateView
 from django.contrib import messages
 from . import models, forms
 import json, os
-
+from django.utils.dateparse import parse_datetime
 from django.contrib.auth.models import User
 
 
@@ -24,7 +24,6 @@ class IndexView(TemplateView):
 
         users = User.objects.exclude(id=self.request.user.id).order_by('username')
         context['users'] = users
-
 
         return context
 
@@ -42,165 +41,109 @@ def get_tasks(request):
     start = request.GET.get("start")
     end = request.GET.get("end")
 
-    # Преобразуем даты для Vacation (убираем время)
+    start_dt = parse_datetime(start) if start else None
+    end_dt = parse_datetime(end) if end else None
+
     start_date_only = start.split('T')[0] if start else None
     end_date_only = end.split('T')[0] if end else None
 
     events = []
 
     for user_id in selected_users:
-        tasks_file = os.path.join(settings.STATIC_ROOT, f'tasks_user_{user_id}.json')
+        tasks = models.Task.objects.filter(
+            managed_by_id=user_id,
+        ).select_related('status', 'managed_by').values(
+            'id', 'title', 'deadline', 'status__name',
+            'managed_by_id',
+            'managed_by__django_user__first_name',
+            'managed_by__django_user__last_name'
+        )
 
-        use_cache = False
-        user_events = []
-        background_events = []
+        for task in tasks:
+            status = task['status__name']
+            css_slug = status.replace(' ', '-').lower()
 
-        if os.path.exists(tasks_file):
-            try:
-                with open(tasks_file, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-            except json.JSONDecodeError:
-                data = {}
+            user_name = f"{task['managed_by__django_user__first_name']} {task['managed_by__django_user__last_name']}"
+            events.append({
+                'id': str(task['id']),
+                'title': f"{task['title']} ({user_name})",
+                'start': task['deadline'].isoformat(),
+                'end': task['deadline'].isoformat(),
+                'status': task['status__name'],
+                'className': 'status-' + css_slug,
+                'user_id': str(task['managed_by_id']),
+                'user_name': user_name
+            })
 
-            last_task_update = models.Task.objects.filter(
-                managed_by_id=user_id
-            ).order_by('-updated_at').first()
+        try:
+            schedule = models.UserSchedule.objects.get(user_id=user_id)
+        except models.UserSchedule.DoesNotExist:
+            schedule = None
 
-            last_schedule_update = models.UserSchedule.objects.filter(
-                user_id=user_id
-            ).order_by('-id').first()
+        if schedule and start_dt and end_dt:
+            day = start_dt.date()
+            end_day = end_dt.date()
 
-            last_vacation_update = models.Vacation.objects.filter(
-                user_schedule__user_id=user_id
-            ).order_by('-id').first()
+            while day <= end_day:
+                work_start = datetime.combine(day, schedule.work_hours_start)
+                work_end = datetime.combine(day, schedule.work_hours_end)
 
-            cache_valid = True
-            if data.get('last_updated'):
-                if (last_task_update and
-                        last_task_update.updated_at.isoformat() != data.get('last_updated')):
-                    cache_valid = False
-                elif last_schedule_update:
-                    # Простая проверка - если есть обновления в расписании, инвалидируем кэш
-                    cache_valid = False
-                elif last_vacation_update:
-                    cache_valid = False
+                # до рабочего времени
+                day_start = datetime.combine(day, time(0, 0))
+                if day_start < work_start:
+                    events.append({
+                        'start': day_start.isoformat(),
+                        'end': work_start.isoformat(),
+                        'rendering': 'background',
+                        'backgroundColor': '#1c1c1c',
+                        'user_id': str(user_id),
+                    })
 
-            if cache_valid and 'tasks' in data and 'background_events' in data:
-                use_cache = True
-                user_events = data['tasks']
-                background_events = data['background_events']
+                # после рабочего времени
+                day_end = datetime.combine(day, time(23, 59, 59))
+                if work_end < day_end:
+                    events.append({
+                        'start': work_end.isoformat(),
+                        'end': day_end.isoformat(),
+                        'rendering': 'background',
+                        'backgroundColor': '#1c1c1c',
+                        'user_id': str(user_id),
+                    })
 
-        if not use_cache:
-            # Загружаем задачи
-            tasks = models.Task.objects.filter(
-                managed_by_id=user_id,
-            ).select_related('status', 'managed_by').values(
-                'id', 'title', 'deadline', 'status__name',
-                'updated_at', 'managed_by_id', 'managed_by__django_user__first_name',
-                'managed_by__django_user__last_name'
-            )
-
-            for task in tasks:
-                status = task['status__name']
-                css_slug = status.replace(' ', '-').lower()
-
-                user_name = f"{task['managed_by__django_user__first_name']} {task['managed_by__django_user__last_name']}"
-
-                user_events.append({
-                    'id': str(task['id']),
-                    'title': f"{task['title']} ({user_name})",
-                    'start': task['deadline'].isoformat(),
-                    'end': task['deadline'].isoformat(),
-                    'status': task['status__name'],
-                    'className': 'status-' + css_slug,
-                    'user_id': str(task['managed_by_id']),
-                    'user_name': user_name
+                personal_start = datetime.combine(day, schedule.personal_hours_start)
+                personal_end = datetime.combine(day, schedule.personal_hours_end)
+                events.append({
+                    'start': personal_start.isoformat(),
+                    'end': personal_end.isoformat(),
+                    'rendering': 'background',
+                    'backgroundColor': '#585858',
+                    'user_id': str(user_id),
                 })
 
-            # для рабочего времени
-            try:
-                schedule = models.UserSchedule.objects.get(user_id=user_id)
+                day += timedelta(days=1)
 
-                start_date = datetime.fromisoformat(start).date()
-                end_date = datetime.fromisoformat(end).date()
+        vacations = models.Vacation.objects.filter(
+            user_schedule__user_id=user_id,
+            date_end__gte=start_date_only,
+            date_start__lte=end_date_only,
+        )
 
-                day = start_date
-                while day <= end_date:
-                    work_start = datetime.combine(day, schedule.work_hours_start)
-                    work_end = datetime.combine(day, schedule.work_hours_end)
+        for v in vacations:
+            events.append({
+                'start': v.date_start.isoformat(),
+                'end': (v.date_end + timedelta(days=1)).isoformat(),
+                'rendering': 'background',
+                'backgroundColor': '#363636',
+                'user_id': str(user_id),
+            })
 
-                    day_start = datetime.combine(day, time(0, 0))
-                    if day_start < work_start:
-                        background_events.append({
-                            'start': day_start.isoformat(),
-                            'end': work_start.isoformat(),
-                            'rendering': 'background',
-                            'backgroundColor': '#1c1c1c',
-                            'user_id': str(user_id),
-                        })
-
-                    day_end = datetime.combine(day, time(23, 59, 59))
-                    if work_end < day_end:
-                        background_events.append({
-                            'start': work_end.isoformat(),
-                            'end': day_end.isoformat(),
-                            'rendering': 'background',
-                            'backgroundColor': '#1c1c1c',
-                            'user_id': str(user_id),
-                        })
-
-                    personal_start = datetime.combine(day, schedule.personal_hours_start)
-                    personal_end = datetime.combine(day, schedule.personal_hours_end)
-                    background_events.append({
-                        'start': personal_start.isoformat(),
-                        'end': personal_end.isoformat(),
-                        'rendering': 'background',
-                        'backgroundColor': '#585858',
-                        'user_id': str(user_id),
-                    })
-
-                    day += timedelta(days=1)
-
-                vacations = models.Vacation.objects.filter(
-                    user_schedule__user_id=user_id,
-                    date_end__gte=start_date_only,
-                    date_start__lte=end_date_only,
-                )
-
-                for v in vacations:
-                    background_events.append({
-                        'start': v.date_start.isoformat(),
-                        'end': (v.date_end + timedelta(days=1)).isoformat(),
-                        'rendering': 'background',
-                        'backgroundColor': '#363636',
-                        'user_id': str(user_id),
-                    })
-
-                    start_datetime = datetime.combine(v.date_start, time(0, 0))
-                    end_datetime = datetime.combine(v.date_end, time(23, 59, 59))
-
-                    background_events.append({
-                        'start': start_datetime.isoformat(),
-                        'end': end_datetime.isoformat(),
-                        'rendering': 'background',
-                        'backgroundColor': '#363636',
-                        'user_id': str(user_id),
-                    })
-
-            except models.UserSchedule.DoesNotExist:
-                schedule = None
-
-            # Сохраняем в кэш
-            last_updated = max(task['updated_at'].isoformat() for task in tasks) if tasks else ''
-            with open(tasks_file, 'w', encoding='utf-8') as f:
-                json.dump({
-                    'last_updated': last_updated,
-                    'tasks': user_events,
-                    'background_events': background_events
-                }, f, ensure_ascii=False, indent=4)
-
-        events.extend(user_events)
-        events.extend(background_events)
+            events.append({
+                'start': datetime.combine(v.date_start, time(0, 0)).isoformat(),
+                'end': datetime.combine(v.date_end, time(23, 59, 59)).isoformat(),
+                'rendering': 'background',
+                'backgroundColor': '#363636',
+                'user_id': str(user_id),
+            })
 
     return JsonResponse(events, safe=False)
 
